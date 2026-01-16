@@ -19,7 +19,7 @@ export default function CategoryPage({ categories, onRefresh }) {
     }
 
     try {
-      const res = await axios.post('http://localhost:5000/api/categories/add', { name: name.trim() });
+     const res = await axios.post('https://inventory-backend-shiwani.onrender.com/api/categories/add', { name: name.trim() });
       if (res.status === 201 || res.status === 200) {
         toast.success('Category added successfully!');
         setName('');
@@ -42,7 +42,7 @@ export default function CategoryPage({ categories, onRefresh }) {
     
     try {
       // Make sure the URL matches your backend route
-      await axios.delete(`http://localhost:5000/api/categories/${id}`);
+      await axios.delete(`https://inventory-backend-shiwani.onrender.com/api/categories/${id}`);
       toast.success('Category removed successfully!');
       onRefresh(); // Update the UI
     } catch (err) {
