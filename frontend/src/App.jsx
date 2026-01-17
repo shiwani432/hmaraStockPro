@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { Toaster, toast } from 'react-hot-toast'; 
 import Login from './components/Login';
@@ -19,36 +19,51 @@ function App() {
   const [activeTab, setActiveTab] = useState('dashboard'); 
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const authConfig = { headers: { Authorization: `Bearer ${token}` } };
-  const BASE_URL = 'https://inventory-backend-shiwani.onrender.com/api';
+  // LOCAL CHECK: Agar localhost par hain toh 5000 use karein, varna Render
+  const BASE_URL = window.location.hostname === 'localhost' 
+    ? 'http://localhost:5000/api' 
+    : 'https://inventory-backend-shiwani.onrender.com/api';
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!token) return;
-    try {
-      // Dono data (Products aur Categories) ko ek saath fetch kar rahe hain
-      const [prodRes, catRes] = await Promise.all([
-        axios.get(`${BASE_URL}/products`, authConfig),
-        axios.get(`${BASE_URL}/categories`) // Spelling categories (plural) sahi ki
-      ]);
-      setProducts(prodRes.data);
-      setCategories(catRes.data);
-    } catch (err) { 
-      if (err.response?.status === 401) logout(); 
-      console.error("Fetch Error:", err);
-    }
-  };
+    
+    const config = { 
+      headers: { 
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      } 
+    };
 
-  useEffect(() => { fetchData(); }, [token, sidebarOpen]);
+    try {
+      console.log("Fetching data from:", BASE_URL);
+      const [prodRes, catRes] = await Promise.all([
+        axios.get(`${BASE_URL}/products`, config),
+        axios.get(`${BASE_URL}/categories`, config) 
+      ]);
+      
+      setProducts(Array.isArray(prodRes.data) ? prodRes.data : []);
+      setCategories(Array.isArray(catRes.data) ? catRes.data : []);
+    } catch (err) { 
+      console.error("Fetch Error:", err);
+      if (err.response?.status === 401) logout();
+      else toast.error("Server connection failed!");
+    }
+  }, [token, BASE_URL]);
+
+  useEffect(() => { 
+    fetchData(); 
+  }, [fetchData, sidebarOpen]);
 
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
+    const config = { headers: { Authorization: `Bearer ${token}` } };
     try {
       if (editingId) {
-        await axios.put(`${BASE_URL}/update/${editingId}`, form, authConfig);
+        await axios.put(`${BASE_URL}/update/${editingId}`, form, config);
         toast.success('Product updated!'); 
         setEditingId(null);
       } else {
-        await axios.post(`${BASE_URL}/add`, form, authConfig);
+        await axios.post(`${BASE_URL}/add`, form, config);
         toast.success('Added to inventory!'); 
       }
       setForm({ name: '', price: '', quantity: '', category: '' });
@@ -58,8 +73,9 @@ function App() {
 
   const handleDelete = async (id) => {
     if(!window.confirm("Khatam kar dein is item ko?")) return;
+    const config = { headers: { Authorization: `Bearer ${token}` } };
     try {
-      await axios.delete(`${BASE_URL}/delete/${id}`, authConfig);
+      await axios.delete(`${BASE_URL}/delete/${id}`, config);
       toast.success('Item removed.'); 
       fetchData();
     } catch (err) { toast.error("Delete failed!"); }

@@ -5,9 +5,13 @@ import { toast } from 'react-hot-toast';
 export default function CategoryPage({ categories, onRefresh }) {
   const [name, setName] = useState('');
   const BASE_URL = 'https://inventory-backend-shiwani.onrender.com/api/categories';
+  
+  // Token ko localStorage se lena zaroori hai authentication ke liye
+  const token = localStorage.getItem('token');
+  const authConfig = { headers: { Authorization: `Bearer ${token}` } };
 
   useEffect(() => {
-    onRefresh(); // Page khulte hi data refresh hoga
+    onRefresh(); 
   }, []);
 
   const handleAdd = async (e) => {
@@ -18,13 +22,15 @@ export default function CategoryPage({ categories, onRefresh }) {
     }
 
     try {
-      const res = await axios.post(`${BASE_URL}/add`, { name: name.trim() });
+      // Yahan bhi authConfig add kiya hai security ke liye
+      const res = await axios.post(`${BASE_URL}/add`, { name: name.trim() }, authConfig);
       if (res.status === 201 || res.status === 200) {
         toast.success('Category added successfully!');
         setName('');
         onRefresh(); 
       }
     } catch (err) {
+      console.error("Add Error:", err);
       toast.error(err.response?.data?.message || "Failed to add category");
     }
   };
@@ -33,10 +39,12 @@ export default function CategoryPage({ categories, onRefresh }) {
     if (!id || !window.confirm("Are you sure you want to delete this category?")) return;
     
     try {
-      await axios.delete(`${BASE_URL}/${id}`);
+      // Backend /api/categories/:id accept karta hai delete ke liye
+      await axios.delete(`${BASE_URL}/${id}`, authConfig);
       toast.success('Category removed successfully!');
       onRefresh(); 
     } catch (err) {
+      console.error("Delete Error:", err);
       toast.error("Failed to delete category.");
     }
   };
@@ -65,7 +73,12 @@ export default function CategoryPage({ categories, onRefresh }) {
             categories.map((cat) => (
               <div key={cat.id} className="group relative bg-slate-50 p-4 rounded-2xl text-center font-bold text-slate-700 border border-slate-100 capitalize flex items-center justify-center gap-2">
                 <span className="text-blue-500">📁</span> {cat.name}
-                <button onClick={() => handleDelete(cat.id)} className="absolute -top-2 -right-2 bg-rose-500 text-white w-6 h-6 rounded-full text-[10px] opacity-0 group-hover:opacity-100 transition-all shadow-lg flex items-center justify-center hover:bg-rose-600 active:scale-90">✕</button>
+                <button 
+                  onClick={() => handleDelete(cat.id)} 
+                  className="absolute -top-2 -right-2 bg-rose-500 text-white w-6 h-6 rounded-full text-[10px] opacity-0 group-hover:opacity-100 transition-all shadow-lg flex items-center justify-center hover:bg-rose-600 active:scale-90"
+                >
+                  ✕
+                </button>
               </div>
             ))
           ) : (
