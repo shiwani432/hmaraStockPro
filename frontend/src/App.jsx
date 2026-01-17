@@ -7,7 +7,7 @@ import StatsCards from './components/StatsCards';
 import ProductForm from './components/ProductForm';
 import ProductTable from './components/ProductTable';
 import InventoryChart from './components/InventoryChart';
-import CategoryPage from './components/CategoryPage'; // Naya component import kiya
+import CategoryPage from './components/CategoryPage'; 
 
 function App() {
   const [token, setToken] = useState(localStorage.getItem('token'));
@@ -20,18 +20,22 @@ function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const authConfig = { headers: { Authorization: `Bearer ${token}` } };
+  const BASE_URL = 'https://inventory-backend-shiwani.onrender.com/api';
 
   const fetchData = async () => {
     if (!token) return;
     try {
+      // Dono data (Products aur Categories) ko ek saath fetch kar rahe hain
       const [prodRes, catRes] = await Promise.all([
-        // Isko badal kar:
-        axios.get('https://inventory-backend-shiwani.onrender.com/api/products', authConfig),
-        axios.get('https://inventory-backend-shiwani.onrender.com/api/categories')
+        axios.get(`${BASE_URL}/products`, authConfig),
+        axios.get(`${BASE_URL}/categories`) // Spelling categories (plural) sahi ki
       ]);
       setProducts(prodRes.data);
       setCategories(catRes.data);
-    } catch (err) { if (err.response?.status === 401) logout(); }
+    } catch (err) { 
+      if (err.response?.status === 401) logout(); 
+      console.error("Fetch Error:", err);
+    }
   };
 
   useEffect(() => { fetchData(); }, [token, sidebarOpen]);
@@ -40,25 +44,22 @@ function App() {
     if (e) e.preventDefault();
     try {
       if (editingId) {
-        // Isko badal kar:
-        await axios.put(`https://inventory-backend-shiwani.onrender.com/api/update/${editingId}`, form, authConfig);
+        await axios.put(`${BASE_URL}/update/${editingId}`, form, authConfig);
         toast.success('Product updated!'); 
         setEditingId(null);
       } else {
-        // Isko badal kar:
-        await axios.post('https://inventory-backend-shiwani.onrender.com/api/add', form, authConfig);
+        await axios.post(`${BASE_URL}/add`, form, authConfig);
         toast.success('Added to inventory!'); 
       }
       setForm({ name: '', price: '', quantity: '', category: '' });
       fetchData();
-    } catch (err) { toast.error("Failed!"); }
+    } catch (err) { toast.error("Failed to save!"); }
   };
 
   const handleDelete = async (id) => {
     if(!window.confirm("Khatam kar dein is item ko?")) return;
     try {
-      // Isko badal kar:
-      await axios.delete(`https://inventory-backend-shiwani.onrender.com/api/delete/${id}`, authConfig);
+      await axios.delete(`${BASE_URL}/delete/${id}`, authConfig);
       toast.success('Item removed.'); 
       fetchData();
     } catch (err) { toast.error("Delete failed!"); }
@@ -97,16 +98,13 @@ function App() {
           )}
         </header>
 
-        {/* DASHBOARD TAB */}
         {activeTab === 'dashboard' && (
           <div className="space-y-8 animate-in fade-in duration-500">
             <StatsCards totalItems={products.length} totalValue={products.reduce((sum, p) => sum + (p.price * p.quantity), 0)} lowStock={products.filter(p => p.quantity < 5).length} />
-            
             <div className="grid grid-cols-12 gap-8">
                 <div className="col-span-12 lg:col-span-8 bg-white p-6 md:p-8 rounded-[2rem] shadow-sm">
                   <ProductForm form={form} setForm={setForm} onSubmit={handleSubmit} editingId={editingId} setEditingId={setEditingId} categories={categories} />
                 </div>
-
                 <div className="col-span-12 lg:col-span-4 bg-white p-8 rounded-[2rem] shadow-sm flex flex-col min-h-[400px]">
                     <h3 className="text-[10px] font-black text-slate-800 uppercase tracking-widest mb-6">Recent Activity</h3>
                     <div className="space-y-6 overflow-y-auto max-h-[350px] pr-2 scrollbar-hide">
@@ -119,21 +117,18 @@ function App() {
                     </div>
                 </div>
             </div>
-
             <div className="bg-white rounded-[2rem] shadow-sm overflow-hidden border-none">
               <ProductTable products={filteredProducts} onEdit={(p) => {setEditingId(p.id); setForm(p)}} onDelete={handleDelete} />
             </div>
           </div>
         )}
 
-        {/* ANALYTICS TAB */}
         {activeTab === 'analytics' && (
           <div className="h-[600px] animate-in slide-in-from-bottom duration-700">
             <InventoryChart products={products} />
           </div>
         )}
 
-        {/* CATEGORIES TAB (Naya Section) */}
         {activeTab === 'categories' && (
           <CategoryPage categories={categories} onRefresh={fetchData} />
         )}
